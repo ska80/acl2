@@ -89,25 +89,33 @@ test image: the tests add ACL2 events to its world.
 
 ## Build the standalone command (Linux)
 
-From the checkout, run GNU Make with the path to the LispWorks console
-executable:
+From the checkout root, run the following commands with GNU Make. This example
+uses `lw`, the LispWorks console executable on `PATH`:
 
 ```sh
-make full LISP='/path/to/lispworks -build -'
-make init LISP='/path/to/lispworks -build -' PREFIX=lw-
-./lw-saved_acl2
+export ACL2_CUSTOMIZATION=NONE
+make full init LISP=lw PREFIX=
+./saved_acl2
 ```
 
-The launcher starts `lw-saved_acl2.lw` at the ACL2 prompt. `-build -` reads
-the build from standard input before LispWorks starts multiprocessing. Do not
-save the executable from an active listener. For `lw`, `lispworks`, and
-`lispworks-*`, Make adds `-build -` if you omit it. If you also build with
-SBCL, use separate build directories. `PREFIX` names the executable, not all
-intermediate files.
+`full` compiles ACL2. `init` saves the image as `saved_acl2.lw` and creates
+its launcher, `./saved_acl2`. You can also run the two Make targets separately.
+The optional `export` skips ACL2 customization files when the launcher starts.
 
-`lw-saved_acl2.lw` is a development image. If your LispWorks edition supports
-Delivery, build the console runtime with `make lispworks-deliver PREFIX=lw-`.
-Run `./lw-saved_acl2-runtime` directly. Delivery removes `compile-file` and
+For executables named `lw`, `lispworks`, or `lispworks-*`, Make adds `-build -`.
+This flag tells LispWorks to read the build from standard input before
+multiprocessing starts. If your executable has another name, replace `LISP=lw`
+with `LISP='/absolute/path/to/your-executable -build -'`. Do not save the
+image from an active listener.
+
+`PREFIX=` leaves the name unprefixed. If you prefer `./lw-saved_acl2`, use
+`PREFIX=lw-`. If you also build with SBCL, use separate build directories:
+`PREFIX` does not rename all intermediate files.
+
+`saved_acl2.lw` is a development image. If your LispWorks edition supports
+Delivery, build the console runtime with `make lispworks-deliver PREFIX=`.
+Use the same `PREFIX` as for `init`. With an empty prefix, run
+`./saved_acl2-runtime` directly. Delivery removes `compile-file` and
 image saving, even at level 0. Use the development image for book compilation
 or `save-exec`. Books are separate files. Before distribution, test on the
 target machine and follow your LispWorks license and ACL2's [license](../LICENSE).

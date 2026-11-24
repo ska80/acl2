@@ -1,6 +1,8 @@
+acl2.asd
 acl2-characters
 acl2-check.lisp
 acl2-customization-files
+acl2-files
 acl2-fns.lisp
 acl2-init.lisp
 acl2.lisp
@@ -48,6 +50,7 @@ ld.lisp
 LICENSE
 linear-a.lisp
 linear-b.lisp
+lispworks
 Makefile
 mcl-acl2-startup.lisp
 memoize.lisp
@@ -80,6 +83,15 @@ translate.lisp
 type-set-a.lisp
 type-set-b.lisp
 workshops.html
+
+lispworks:
+api.lisp
+bootstrap.lisp
+characters.lisp
+deliver.lisp
+README.md
+test-load.lisp
+tests.lisp
 
 acl2-customization-files:
 bookdata.lisp

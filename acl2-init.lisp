@@ -971,7 +971,8 @@ respectively at least (1- (expt 2 29)) and (expt 2 29), which are
    "~% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
    "~% + ~a~72t+"
    "~% +   built ~a.~72t+"
-   (acl2-snapshot-info)
+   #+(and lispworks acl2-asdf) "" ; no standalone banner in the library
+   #-(and lispworks acl2-asdf) (acl2-snapshot-info)
    "~% + Copyright (C) 2026, Regents of the University of Texas.~72t+"
    "~% + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and~72t+"
    "~% + you are welcome to redistribute it under certain conditions.  For~72t+"
@@ -1716,13 +1717,15 @@ THISSCRIPTDIR=\"$( cd \"$( dirname \"$absdir\" )\" && pwd -P )\"
              is necessary because of the way multiprocessing works in ~%~
              Lispworks.~%~%"))
 
-; We just make a guess that Lispworks can be handled the way that GCL is
-; handled.
+  #+acl2-asdf
+  (error "Cannot save the application image with ACL2 SAVE-EXEC. Use the standalone build.")
+  (when mp:*current-process*
+    (error "Cannot save ACL2 while LispWorks multiprocessing is running. ~
+            Run the build in a fresh LispWorks process with -build -."))
 
   (if (probe-file "worklispext")
       (delete-file "worklispext"))
-  (let* ((ext "lw")
-         (ext+
+  (let* ((ext+
 
 ; We deal with the apparent fact that Windows implementations of GCL append
 ; ".exe" to the filename created by save-system -- and assume, until someone
@@ -1763,36 +1766,17 @@ THISSCRIPTDIR=\"$( cd \"$( dirname \"$absdir\" )\" && pwd -P )\"
        (insert-string host-lisp-args)
        (user-args-string inert-args)))
     (chmod-executable sysout-name)
-    (cond ((and system::*init-file-loaded*
-                system::*complain-about-init-file-loaded*)
-
-; We hope it's fine to save an image when an init-file has been loaded.  Maybe
-; somebody can explain to us why LispWorks causes a break in such a situation
-; by default (which explains the binding of
-; system::*complain-about-init-file-loaded* below).
-
-           (format t
-                   "Warning: Overriding LispWorks hesitation to save an image~%~
-                    after init-file has been loaded.~%")
-           (let ((system::*complain-about-init-file-loaded* nil))
-             (system::save-image lw-exec-file
-                                 :restart-function 'acl2-default-restart
-                                 #+acl2-par :multiprocessing
-                                 #+acl2-par t
-                                 :gc t)))
-          (t (system::save-image lw-exec-file
-                                 :restart-function 'acl2-default-restart
-                                 #+acl2-par :multiprocessing
-                                 #+acl2-par t
-                                 :gc t)))))
+    (when (and system::*init-file-loaded*
+               system::*complain-about-init-file-loaded*)
+      (format t "Warning: Saving a LispWorks image after loading an init file.~%"))
+    (let ((system::*complain-about-init-file-loaded* nil))
+      (hcl:save-image lw-exec-file :restart-function 'acl2-default-restart
+                      :environment nil :multiprocessing #+acl2-par t #-acl2-par nil
+                      :gc t))))
 
 #+lispworks
 (defun save-acl2-in-lispworks (sysout-name mode eventual-sysout-name)
   (declare (ignore mode))
-  (if (probe-file "worklispext")
-      (delete-file "worklispext"))
-  (with-open-file (str "worklispext" :direction :output)
-                  (format str "lw"))
   (lispworks-save-exec-aux sysout-name eventual-sysout-name
                            nil nil))
 
@@ -2488,7 +2472,7 @@ THISSCRIPTDIR=\"$( cd \"$( dirname \"$absdir\" )\" && pwd -P )\"
 
                             do-not-save-gcl)
   #-gcl (declare (ignore do-not-save-gcl))
-  #-(or gcl allegro cmu sbcl clisp ccl)
+  #-(or gcl allegro cmu sbcl clisp ccl lispworks)
   (declare (ignore other-info))
 
   #+gcl

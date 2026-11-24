@@ -1273,16 +1273,16 @@
          (setq *cl-cache* size)
          (cond
           ((eq flg 'EXTENSION)
-           (loop for line in lines
-                 with i = 0
+           (loop with i = 0
+                 for line in lines
                  until (or (null line)
                            (> (setq i (+ 1 i)) size))
                  when (eq (access cl-cache-line line :status) :BAD)
                  do
                  (setf (access-cl-cache-line line :status) :UNKNOWN)))
           (t ; RETRACTION
-           (loop for line in lines
-                 with i = 0
+           (loop with i = 0
+                 for line in lines
                  until (or (null line)
                            (> (setq i (+ 1 i)) size))
                  do

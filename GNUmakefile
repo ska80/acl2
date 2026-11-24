@@ -123,6 +123,16 @@ export TIME_CERT = yes
 # some other application.)
 LISP = ccl
 
+# LispWorks cannot save an image from a multiprocessing listener. -build -
+# reads the same forms from stdin in a fresh, noninteractive build process.
+# For a differently named image set LISP_BATCH_ARGS='-build -' explicitly.
+ifneq (,$(filter lw lispworks lispworks-%,$(notdir $(firstword $(LISP)))))
+ifeq (,$(filter -build,$(LISP)))
+LISP_BATCH_ARGS ?= -build -
+endif
+endif
+RUN_LISP = $(LISP) $(LISP_BATCH_ARGS) < workxxx
+
 DIR = /tmp
 
 # The following is intended to provide the current working directory
@@ -267,7 +277,7 @@ ifdef ACL2_PAR
 endif
 # No change to sources for ACL2_DEVEL or ACL2_WAG
 
-sources_extra := GNUmakefile acl2-characters doc.lisp \
+sources_extra := GNUmakefile acl2-characters acl2-files doc.lisp \
 	         acl2.lisp acl2-check.lisp acl2-fns.lisp acl2-init.lisp \
 	         akcl-acl2-trace.lisp allegro-acl2-trace.lisp openmcl-acl2-trace.lisp
 
@@ -419,7 +429,7 @@ do_saved:
 	rm -fr saved
 	mkdir saved
 	chmod 775 saved
-	cp *.lisp acl2-characters GNUmakefile saved/
+	cp *.lisp acl2-characters acl2-files GNUmakefile saved/
 	chmod 666 saved/*
 
 # Keep the use of :COMPILED/:COMPILE-SKIPPED below in sync with ACL2
@@ -458,7 +468,7 @@ compile-ok:
 	echo '(load "init.lisp")' > workxxx
 	echo '(acl2::note-compile-ok)' >> workxxx
 	echo '(acl2::exit-lisp)' >> workxxx
-	${LISP} < workxxx
+	$(RUN_LISP)
 	rm -f workxxx
 
 .PHONY: check-sum
@@ -468,7 +478,7 @@ check-sum:
 	echo '(load "init.lisp") (acl2)' > workxxx
 	echo '(acl2::make-check-sum-file)' >> workxxx
 	echo '(acl2::exit-lisp)' >> workxxx
-	${LISP} < workxxx
+	$(RUN_LISP)
 	rm -f workxxx
 
 .PHONY: full
@@ -486,7 +496,7 @@ compile:
 	echo '(load "init.lisp")' > workxxx
 	echo '(acl2::compile-acl2 $(USE_ACL2_PROCLAIMS))' >> workxxx
 	echo '(acl2::exit-lisp)' >> workxxx
-	${LISP} < workxxx
+	$(RUN_LISP)
 	@$(MAKE) check_compile_ok
 
 .PHONY: copy-distribution
@@ -501,7 +511,7 @@ copy-distribution: acl2r.lisp
 	echo '(load "init.lisp")' > workxxx
 	echo '(acl2::copy-distribution "workyyy" "${CURDIR}" "${DIR}")' >> workxxx
 	echo '(acl2::exit-lisp)' >> workxxx
-	${LISP} < workxxx
+	$(RUN_LISP)
 	chmod 777 workyyy
 	./workyyy
 	rm -f workxxx
@@ -522,7 +532,7 @@ TAGS:   $(ACL2_DEPS)
 	echo '(load "init.lisp")' > workxxx
 	echo '(acl2::make-tags)' >> workxxx
 	echo '(acl2::exit-lisp)' >> workxxx
-	${LISP} < workxxx
+	$(RUN_LISP)
 	rm -f workxxx
 	if [ -f TAGS ] ; then chmod 644 TAGS ; fi
 
@@ -558,7 +568,7 @@ acl2-proclaims.lisp: ${sources}
 	echo '(in-package "ACL2")' >> workxxx
 	echo '(generate-acl2-proclaims)' >> workxxx
 	echo '(exit-lisp)' >> workxxx
-	${LISP} < workxxx
+	$(RUN_LISP)
 	[ -f acl2-proclaims.lisp ]
 
 .PHONY: init
@@ -575,7 +585,7 @@ init: acl2-proclaims.lisp
 	echo '(in-package "ACL2")' >> workxxx
 	echo '(save-acl2 (quote (initialize-acl2 (quote include-book))) "${PREFIXsaved_acl2}")' >> workxxx
 	echo '(exit-lisp)' >> workxxx
-	${LISP} < workxxx
+	$(RUN_LISP)
 	@$(MAKE) check_init_ok
 # Move to old.
 	if [ -f worklispext ]; then $(MAKE) move-to-old LISPEXT=`cat worklispext` ;\
@@ -598,6 +608,13 @@ init: acl2-proclaims.lisp
 	$(MAKE) chmod_image
 	@echo "Successfully built $(ACL2_WD)/${PREFIXsaved_acl2}."
 
+# Deliver a console runtime from the initialized LispWorks development image.
+.PHONY: lispworks-deliver
+lispworks-deliver:
+	@test -x "./${PREFIXsaved_acl2}.lw" || { echo 'Build the LispWorks image first (with the same PREFIX).'; exit 1; }
+	ACL2_LW_RUNTIME="$(ACL2_WD)/${PREFIXsaved_acl2}-runtime" \
+	  "./${PREFIXsaved_acl2}.lw" -no-restart-function -build lispworks/deliver.lisp
+
 # The following "proofs" target assumes that files for the specified LISP have
 # been compiled.  We use :load-acl2-proclaims nil so that we don't
 # have to worry about perhaps having wiped out acl2-proclaims.lisp
@@ -609,7 +626,7 @@ proofs: compile-ok
 	echo '(acl2::load-acl2 :load-acl2-proclaims nil)' >> workxxx
 	echo '(acl2::initialize-acl2 nil)' >> workxxx
 	echo '(acl2::exit-lisp)' >> workxxx
-	${LISP} < workxxx
+	$(RUN_LISP)
 	@$(MAKE) check_init_ok
 	rm -f workxxx
 

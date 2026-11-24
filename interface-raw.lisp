@@ -8205,6 +8205,9 @@
 #+gcl
 (defvar user::*acl2-keep-tmp-files* nil)
 
+;; Embedders can omit the transcript of each bootstrap event, not its checks.
+(defvar *boot-strap-verbose* t)
+
 (defun-one-output enter-boot-strap-mode (system-books-dir operating-system)
 
 ; If we interrupted an earlier initialization, the following form will undo it.
@@ -8292,7 +8295,11 @@
 ; Warning: If you change this, make the corresponding change in
 ; default-state-vars.
 
-  (f-put-global 'inhibit-output-lst '(proof-tree) *the-live-state*)
+  (f-put-global 'inhibit-output-lst
+                (if *boot-strap-verbose*
+                    '(proof-tree)
+                  (remove1-eq 'error *valid-output-names*))
+                *the-live-state*)
 
 ; We now pop the empty frame.  There is no way this acl2-unwind will do any
 ; real work because only an abort would leave stuff in the frame and an abort
@@ -8443,7 +8450,7 @@
     (ld-always-skip-top-level-locals . nil)
     (ld-pre-eval-filter . :all)
     (ld-pre-eval-print . ,(if ld-skip-proofsp nil t))
-    (ld-post-eval-print . :command-conventions)
+    (ld-post-eval-print . ,(and *boot-strap-verbose* :command-conventions))
     (ld-evisc-tuple .
 
 ; In order to avoid printing huge forms during initialization when ld-ing files
@@ -8453,7 +8460,7 @@
     (ld-error-triples . t)
     (ld-error-action . ,ld-error-action)
     (ld-query-control-alist . t)
-    (ld-verbose . t)
+    (ld-verbose . ,*boot-strap-verbose*)
     (ld-user-stobjs-modified-warning . nil)))
 
 (defun enter-boot-strap-pass-2 ()
@@ -9562,6 +9569,7 @@
     (set-cbd-fn1 *initial-cbd* state)))
 
 (defun initialize-acl2 (&optional (pass-2-ld-skip-proofsp 'include-book)
+                                  (write-status-file t)
                                   &aux
                                   (acl2-pass-2-files *acl2-pass-2-files*)
                                   system-books-dir
@@ -9830,17 +9838,10 @@
 ; properly until the 'level-no properties are set.
 
          (check-acl2-initialization))
-     (cond
-      ((or (not (probe-file *acl2-status-file*))
-           (delete-file *acl2-status-file*))
-       (with-open-file (str *acl2-status-file*
-                            :direction :output)
-                       (format str
-                               "~s"
-
-; The next token, :INITIALIZED, is used in GNUmakefile; keep in sync.
-
-                               :INITIALIZED))))
+     (when write-status-file ; make uses this token; ASDF needs no stamp
+       (with-open-file (str *acl2-status-file* :direction :output
+                            :if-exists :supersede)
+         (format str "~s" :initialized)))
 
      (setq *saved-build-date-lst*
 

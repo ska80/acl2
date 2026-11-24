@@ -12,6 +12,9 @@ ACL2 authors, Matt Kaufmann and J Moore.
 
 [ACL2]: http://www.cs.utexas.edu/users/moore/acl2 "ACL2 Home Page"
 
+For a LispWorks application, see [Use ACL2 as an ASDF dependency](lispworks/README.md).
+The same guide covers the standalone LispWorks executable.
+
 ### ACL2 Books
 
 The `books/` directory of this repository comprises the Community Books,

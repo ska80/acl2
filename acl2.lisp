@@ -967,7 +967,8 @@
 ; that issue here.  Thanks to Martin Simmons for providing this code in place
 ; of the original code, which instead invoked (rename-package "DEF"
 ; "DEF-FROM-LW-RENAMED").
-#+lispworks
+; In an application image, leave the host's DSPEC nickname alone.
+#+(and lispworks (not acl2-asdf))
 (when (find-package "DEF")
   (unless (equal (package-name "DEF") "DSPEC")
     (error "Expected LispWorks DEF package to be called DSPEC"))
@@ -1192,54 +1193,7 @@
 ; /projects/acl2/.snapshot/*/devel.  The latter is just a soft link to
 ; /projects/acl2/devel, i.e., to /v/filer4b/v11q002/acl2space/acl2/devel.
 
-  '(
-    #+acl2-par "multi-threading-raw"
-    "serialize-raw"
-    "axioms"
-    "hons"
-    "hons-raw" ; avoid possible inlining of hons fns in later sources
-    "basis-a"   ; to be included in any "toothbrush"
-    "memoize"
-    "serialize"
-    "basis-b"   ; not to be included in any "toothbrush"
-    "parallel" ; but only get special under-the-hood treatment with #+acl2-par
-    #+acl2-par "futures-raw"
-    #+acl2-par "parallel-raw"
-    "memoize-raw"
-    "float-a"
-    "translate"
-    "type-set-a"
-    "linear-a"
-    "type-set-b"
-    "linear-b"
-    "non-linear"
-    "tau"
-    "rewrite"
-    "simplify"
-    "bdd"
-    "other-processes"
-    "induct"
-    "proof-builder-pkg"
-    "doc"
-    "history-management"
-    "prove"
-    "defuns"
-    "proof-builder-a"
-    "defthm"
-    "other-events"
-    "float-b"
-    "ld"
-    "proof-builder-b"
-    "apply-raw"
-    "interface-raw"
-    "float-raw"
-    "defpkgs"
-    "boot-strap-pass-2-a"
-    "apply-prim"
-    "apply-constraints"
-    "apply"
-    "boot-strap-pass-2-b"
-    )
+  (with-open-file (stream "acl2-files") (read stream))
   "*acl2-files* is the list of all the files necessary to build
 ACL2 from scratch.")
 
@@ -1637,7 +1591,9 @@ ACL2 from scratch.")
     #+(or sbcl cmucl)
     `(progn (format t (concatenate 'string ,prefix ,str ,suffix) ,@args)
             (exit-lisp 1))
-    #+lispworks
+    #+(and lispworks acl2-asdf)
+    `(error (concatenate 'string ,prefix ,str ,suffix) ,@args)
+    #+(and lispworks (not acl2-asdf))
     `(dbg:with-debugger-wrapper
       'my-debugger-wrapper
       (progn (format t (concatenate 'string ,prefix ,str ,suffix) ,@args)
@@ -1918,7 +1874,7 @@ ACL2 from scratch.")
 ;   Function size 67910 is too large.
 ; This problem has disappeared with LispWorks 6.0.  But it seems reasonable to
 ; leave the following in place.
-#+lispworks
+#+(and lispworks (not acl2-asdf))
 (cl-user::toggle-source-debugging nil)
 
 (defmacro our-with-compilation-unit (form)
@@ -1979,6 +1935,7 @@ ACL2 from scratch.")
 
  (with-suppression
   (load "acl2-fns.lisp") ;we like to load before compiling
+  #-(and lispworks acl2-asdf) ; do not touch make's object files from ASDF
   (let ((acl2-fns-compiled
          (make-pathname :name "acl2-fns"
                         :type *compiled-file-extension*)))
@@ -1996,7 +1953,8 @@ ACL2 from scratch.")
 ; of lower-case-p-new etc. in acl2-fns.lisp.
 #-gcl
 (defvar *case-mods-completed* nil)
-#-gcl
+; The ASDF library installs these fixes only in the dynamic context of ACL2.
+#-(or gcl (and lispworks acl2-asdf))
 (when (not *case-mods-completed*)
   (format t "; Redefining lower-case-p, char-upcase, and string-upcase.~%")
   (setq *case-mods-completed* t)
